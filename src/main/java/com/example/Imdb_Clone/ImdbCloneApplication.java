@@ -28,6 +28,7 @@ public class ImdbCloneApplication {
         System.setProperty("spring.jpa.show-sql", "true");
         System.setProperty("spring.h2.console.enabled", "true");
         System.setProperty("spring.h2.console.path", "/h2-console");
+        System.setProperty("spring.h2.console.settings.web-allow-others", "true");
         SpringApplication.run(ImdbCloneApplication.class, args);
     }
 

@@ -1,21 +1,20 @@
 package com.example.Imdb_Clone.service;
 
+import com.example.Imdb_Clone.config.properties.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
-
-import com.example.Imdb_Clone.config.properties.JwtProperties;
-import lombok.RequiredArgsConstructor;
+import javax.crypto.spec.SecretKeySpec;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +40,6 @@ public class JwtService {
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                // Use the expiration from our properties class
                 .setExpiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration()))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
                 .compact();
@@ -69,8 +67,8 @@ public class JwtService {
     }
 
     private Key getSignInKey() {
-        // Use the secret key from our properties class
-        byte[] keyBytes = Decoders.BASE64.decode(jwtProperties.getSecretKey());
-        return Keys.hmacShaKeyFor(keyBytes);
+        // THIS IS THE FIX: We get the raw bytes from the plain text secret key.
+        byte[] keyBytes = jwtProperties.getSecretKey().getBytes(StandardCharsets.UTF_8);
+        return new SecretKeySpec(keyBytes, "HmacSHA256");
     }
 }
