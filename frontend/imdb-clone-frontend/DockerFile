@@ -1,0 +1,18 @@
+# Stage 1: Build the React application
+FROM node:18 AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+# Set the backend API URL for the containerized environment
+ENV VITE_API_BASE_URL=http://backend:8080/api
+RUN npm run build
+
+# Stage 2: Serve the static files with Nginx
+FROM nginx:stable-alpine
+# Copy the built files from the build stage
+COPY --from=build /app/dist /usr/share/nginx/html
+# Expose the port Nginx runs on
+EXPOSE 80
+# Command to start Nginx
+CMD ["nginx", "-g", "daemon off;"]

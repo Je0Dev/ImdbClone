@@ -10,7 +10,6 @@ import com.example.Imdb_Clone.repository.RoleRepository;
 import com.example.Imdb_Clone.repository.UserRepository;
 import com.example.Imdb_Clone.service.AuthService;
 import com.example.Imdb_Clone.service.JwtService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +28,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    @Override
     public AuthResponseDto register(RegisterRequestDto request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new UserAlreadyExistsException("Username is already taken!");
@@ -38,9 +38,8 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        // Assign a default "USER" role
         Role userRole = roleRepository.findByName("ROLE_USER")
-                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+                .orElseThrow(() -> new RuntimeException("Error: Default role ROLE_USER not found."));
         user.setRoles(Set.of(userRole));
 
         userRepository.save(user);
@@ -55,11 +54,9 @@ public class AuthServiceImpl implements AuthService {
                 new UsernamePasswordAuthenticationToken(
                         request.getUsername(),
                         request.getPassword()));
-        // If the above line doesn't throw an exception, the user is authenticated
         var user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow();
+                .orElseThrow(() -> new IllegalArgumentException("Invalid username or password."));
         String jwtToken = jwtService.generateToken(user);
         return new AuthResponseDto(jwtToken);
     }
-
 }

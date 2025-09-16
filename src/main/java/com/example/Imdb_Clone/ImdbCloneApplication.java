@@ -1,34 +1,38 @@
 package com.example.Imdb_Clone;
 
-import com.example.Imdb_Clone.model.*;
-import com.example.Imdb_Clone.repository.*;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.CommandLineRunner;
+import com.example.Imdb_Clone.model.*;
+import com.example.Imdb_Clone.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
+import com.example.Imdb_Clone.config.properties.JwtProperties;
+import com.example.Imdb_Clone.config.properties.OmdbProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
-@SpringBootApplication
+// This annotation explicitly disables Flyway, removing all related errors.
+@SpringBootApplication(exclude = FlywayAutoConfiguration.class)
+@EnableConfigurationProperties({ JwtProperties.class, OmdbProperties.class })
 public class ImdbCloneApplication {
 
     public static void main(String[] args) {
+        // Set the property HERE to force Hibernate to 'update' the database.
+        System.setProperty("spring.jpa.hibernate.ddl-auto", "update");
+        System.setProperty("spring.jpa.show-sql", "true");
+        System.setProperty("spring.h2.console.enabled", "true");
+        System.setProperty("spring.h2.console.path", "/h2-console");
         SpringApplication.run(ImdbCloneApplication.class, args);
     }
 
-    /**
-     * This bean runs on application startup and is used to seed the database with
-     * initial data.
-     * It ensures that roles, users, and sample content exist for development and
-     * testing.
-     * It relies on the Flyway migration script (V1) to have already created the
-     * tables and initial roles.
-     */
     @Bean
-
+    @Transactional
     CommandLineRunner commandLineRunner(
             RoleRepository roleRepository,
             UserRepository userRepository,
@@ -36,17 +40,20 @@ public class ImdbCloneApplication {
             GenreRepository genreRepository,
             ActorRepository actorRepository,
             DirectorRepository directorRepository,
-            MovieRepository movieRepository,
-            SeriesRepository seriesRepository,
-            EpisodeRepository episodeRepository) {
+            MovieRepository movieRepository) {
         return args -> {
-            // --- 1. Find Foundational Roles (created by Flyway) ---
-            Role userRole = roleRepository.findByName("ROLE_USER")
-                    .orElseThrow(() -> new RuntimeException("Error: ROLE_USER is not found in the database."));
-            Role adminRole = roleRepository.findByName("ROLE_ADMIN")
-                    .orElseThrow(() -> new RuntimeException("Error: ROLE_ADMIN is not found in the database."));
+            // --- 1. Create Foundational Roles & Admin User ---
+            Role userRole = roleRepository.findByName("ROLE_USER").orElseGet(() -> {
+                Role role = new Role();
+                role.setName("ROLE_USER");
+                return roleRepository.save(role);
+            });
+            Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseGet(() -> {
+                Role role = new Role();
+                role.setName("ROLE_ADMIN");
+                return roleRepository.save(role);
+            });
 
-            // --- 2. Create an Admin User (if it doesn't exist) ---
             if (userRepository.findByUsername("admin").isEmpty()) {
                 User adminUser = new User();
                 adminUser.setUsername("admin");
@@ -56,72 +63,48 @@ public class ImdbCloneApplication {
                 System.out.println("---- Admin user created! ----");
             }
 
-            // --- 3. Seed Sample Genres, Actors, and Directors ---
-            Genre action = new Genre();
-            action.setName("Action");
-            Genre sciFi = new Genre();
-            sciFi.setName("Sci-Fi");
-            Genre drama = new Genre();
-            drama.setName("Drama");
-            genreRepository.saveAll(List.of(action, sciFi, drama));
+            // --- 2. Seed Sample Movie Data (Only if database is empty) ---
+            if (movieRepository.count() == 0) {
+                System.out.println("---- No movies found. Seeding sample data... ----");
 
-            Actor leo = new Actor();
-            leo.setName("Leonardo DiCaprio");
-            Actor keanu = new Actor();
-            keanu.setName("Keanu Reeves");
-            actorRepository.saveAll(List.of(leo, keanu));
+                // Seed Genres
+                Genre action = genreRepository.save(new Genre());
+                Genre sciFi = genreRepository.save(new Genre());
+                Genre drama = genreRepository.save(new Genre());
 
-            Director chris = new Director();
-            chris.setName("Christopher Nolan");
-            Director lana = new Director();
-            lana.setName("Lana Wachowski");
-            directorRepository.saveAll(List.of(chris, lana));
+                // Seed Actors
+                Actor leo = actorRepository.save(new Actor());
+                Actor keanu = actorRepository.save(new Actor());
 
-            // --- 4. Seed Sample Movies ---
-            Movie movie1 = new Movie();
-            movie1.setTitle("Inception");
-            movie1.setDescription("A thief who steals corporate secrets through the use of dream-sharing technology.");
-            movie1.setReleaseDate(LocalDate.of(2010, 7, 16));
-            movie1.setPosterUrl("https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg");
-            movie1.setGenres(Set.of(action, sciFi));
-            movie1.setActors(Set.of(leo));
-            movie1.setDirectors(Set.of(chris));
+                // Seed Directors
+                Director chris = directorRepository.save(new Director());
+                Director lana = directorRepository.save(new Director());
 
-            Movie movie2 = new Movie();
-            movie2.setTitle("The Matrix");
-            movie2.setDescription(
-                    "A computer hacker learns from mysterious rebels about the true nature of his reality.");
-            movie2.setReleaseDate(LocalDate.of(1999, 3, 31));
-            movie2.setPosterUrl("https://image.tmdb.org/t/p/w500/f89JxwcxYyKZzdmFMLQFpaapgp.jpg");
-            movie2.setGenres(Set.of(action, sciFi));
-            movie2.setActors(Set.of(keanu));
-            movie2.setDirectors(Set.of(lana));
-            movieRepository.saveAll(List.of(movie1, movie2));
+                // Seed Movies
+                Movie movie1 = new Movie();
+                movie1.setTitle("Inception");
+                movie1.setDescription(
+                        "A thief who steals corporate secrets through the use of dream-sharing technology.");
+                movie1.setReleaseDate(LocalDate.of(2010, 7, 16));
+                movie1.setPosterUrl("https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg");
+                movie1.setGenres(Set.of(action, sciFi));
+                movie1.setActors(Set.of(leo));
+                movie1.setDirectors(Set.of(chris));
+                movieRepository.save(movie1);
 
-            // --- 5. Seed a Sample Series with Episodes ---
-            Series breakingBad = new Series();
-            breakingBad.setTitle("Breaking Bad");
-            breakingBad.setDescription(
-                    "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine to secure his family's future.");
-            breakingBad.setReleaseDate(LocalDate.of(2008, 1, 20));
-            breakingBad.setEndDate(LocalDate.of(2013, 9, 29));
-            breakingBad.setGenres(Set.of(drama));
-            seriesRepository.save(breakingBad);
+                Movie movie2 = new Movie();
+                movie2.setTitle("The Matrix");
+                movie2.setDescription(
+                        "A computer hacker learns from mysterious rebels about the true nature of his reality.");
+                movie2.setReleaseDate(LocalDate.of(1999, 3, 31));
+                movie2.setPosterUrl("https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg");
+                movie2.setGenres(Set.of(action, sciFi));
+                movie2.setActors(Set.of(keanu));
+                movie2.setDirectors(Set.of(lana));
+                movieRepository.save(movie2);
 
-            Episode episode1 = new Episode();
-            episode1.setTitle("Pilot");
-            episode1.setSeasonNumber(1);
-            episode1.setEpisodeNumber(1);
-            episode1.setSeries(breakingBad);
-
-            Episode episode2 = new Episode();
-            episode2.setTitle("Cat's in the Bag...");
-            episode2.setSeasonNumber(1);
-            episode2.setEpisodeNumber(2);
-            episode2.setSeries(breakingBad);
-            episodeRepository.saveAll(List.of(episode1, episode2));
-
-            System.out.println("---- Sample data seeding complete! ----");
+                System.out.println("---- Sample data seeded successfully! ----");
+            }
         };
     }
 }

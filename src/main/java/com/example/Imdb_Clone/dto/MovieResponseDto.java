@@ -7,6 +7,8 @@ import java.util.Set;
 // DTO for sending movie data to the client
 @Data
 public class MovieResponseDto {
+    private double averageRating;
+    private Integer userRating; // Use Integer to allow null if user hasn't rated
     private Set<ReviewDto> reviews;
     private Long id;
     private String title;

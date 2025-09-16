@@ -3,11 +3,15 @@ package com.example.Imdb_Clone.model;
 import jakarta.persistence.*; // Make sure to import everything from jakarta.persistence
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import com.example.Imdb_Clone.dto.MovieResponseDto;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.springframework.data.util.Streamable;
 
 @Entity
 @Data
@@ -43,4 +47,9 @@ public class Movie {
     @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference // Handles the "forward" part of the reference, the one that gets serialized.
     private Set<Review> reviews = new HashSet<>();
+
+    // ADD THIS RELATIONSHIP
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Rating> ratings = new HashSet<>();
+
 }

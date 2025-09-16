@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,7 +22,6 @@ public class WatchlistServiceImpl implements WatchlistService {
 
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
-    private final MovieServiceImpl movieService; // For DTO conversion
 
     @Override
     @Transactional
@@ -44,8 +45,10 @@ public class WatchlistServiceImpl implements WatchlistService {
     @Transactional(readOnly = true)
     public Set<MovieResponseDto> getWatchlist(String username) {
         User user = findUserByUsername(username);
-        return user.getWatchlist().stream()
-                .map(movieService::movieToMovieResponseDto)
+        Set<Movie> watchlistMovies = Optional.ofNullable(user.getWatchlist()).orElse(Collections.emptySet());
+
+        return watchlistMovies.stream()
+                .map(this::convertMovieToSimpleDto)
                 .collect(Collectors.toSet());
     }
 
@@ -57,5 +60,15 @@ public class WatchlistServiceImpl implements WatchlistService {
     private Movie findMovieById(Long movieId) {
         return movieRepository.findById(movieId)
                 .orElseThrow(() -> new ResourceNotFoundException("Movie not found: " + movieId));
+    }
+
+    // A simple converter for the watchlist view to avoid circular dependencies
+    private MovieResponseDto convertMovieToSimpleDto(Movie movie) {
+        MovieResponseDto dto = new MovieResponseDto();
+        dto.setId(movie.getId());
+        dto.setTitle(movie.getTitle());
+        dto.setReleaseDate(movie.getReleaseDate());
+        dto.setPosterUrl(movie.getPosterUrl());
+        return dto;
     }
 }

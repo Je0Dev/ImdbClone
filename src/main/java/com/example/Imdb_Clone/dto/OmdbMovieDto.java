@@ -5,14 +5,9 @@ import lombok.Data;
 
 @Data
 public class OmdbMovieDto {
+
     @JsonProperty("Title")
     private String title;
-
-    @JsonProperty("Year")
-    private String year;
-
-    @JsonProperty("Released")
-    private String released;
 
     @JsonProperty("Plot")
     private String plot;
@@ -20,9 +15,12 @@ public class OmdbMovieDto {
     @JsonProperty("Poster")
     private String poster;
 
-    @JsonProperty("imdbID")
-    private String imdbId;
+    @JsonProperty("Released")
+    private String released;
 
     @JsonProperty("Response")
-    private String response;
+    private String response; // This will be "True" or "False"
+
+    @JsonProperty("Error")
+    private String error; // This will contain an error message if Response is "False"
 }
